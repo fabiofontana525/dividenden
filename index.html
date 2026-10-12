@@ -39,6 +39,14 @@ h2{font-size:20px;font-weight:800;margin:30px 2px 12px}
 .tools{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tool{display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;border-radius:18px;padding:15px 8px;font-weight:700;font-size:15px;text-align:center}
 .tool.wide{grid-column:1/-1}
+.seg{display:inline-flex;background:rgba(255,255,255,.55);border-radius:999px;padding:3px;margin-bottom:12px}
+.seg button{padding:7px 16px;border-radius:999px;font-weight:700;font-size:14px}
+.seg button.on{background:var(--ink);color:#fff}
+.mrow.now .mn{background:var(--gold);border-radius:999px;text-align:center}
+.set{background:#fff;border-radius:24px;padding:2px 16px 16px}
+.hint{font-size:13px;color:var(--mute);margin:8px 2px 0}
+.warn{background:#fff;border:3px solid var(--gold);border-radius:20px;padding:14px 16px;margin:0 0 14px;font-weight:700}
+.warn[hidden]{display:none}
 
 .add{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--ink);color:#fff;border-radius:999px;padding:16px;font-weight:700;font-size:17px;margin-bottom:6px}
 .rowi{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 4px;border-bottom:1.5px solid #c3d3ee}
@@ -74,9 +82,12 @@ input{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--f
   <h1>Dividenden</h1>
 </div>
 
+<div class="warn" id="warn" hidden>Zeit für die Sicherung: Tippe unten bei „Sicherung“ auf „Sicherung speichern“.</div>
+
 <section class="hero">
-  <p>Dein Depot zahlt dir dieses Jahr voraussichtlich</p>
+  <p id="hl">Dein Depot zahlt dir dieses Jahr voraussichtlich (netto)</p>
   <div class="big" id="year">0 €</div>
+  <div class="seg" id="seg"><button data-n="1" class="on">Netto</button><button data-n="0">Brutto</button></div>
   <div class="stats">
     <div class="pill"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1B3A" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/></svg><span><b id="avg">0 €</b> pro Monat</span></div>
     <div class="pill"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1B3A" stroke-width="2" stroke-linecap="round"><path d="M5 19L19 5"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/></svg><span><b id="yld">–</b> Rendite</span></div>
@@ -90,6 +101,12 @@ input{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--f
 <h2>Mein Depot</h2>
 <button class="add" id="add"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Aktie hinzufügen</button>
 <div id="list"></div>
+<h2>Steuern</h2>
+<div class="set">
+  <label for="t-rate">Steuersatz auf Dividenden in Deutschland (%)</label>
+  <input id="t-rate" inputmode="decimal">
+  <p class="hint">26,375 % gilt ohne Kirchensteuer (Abgeltungsteuer plus Soli). Mit Kirchensteuer ist er etwas höher. Deckt dein Freistellungsauftrag die Dividenden ab, trage 0 ein.</p>
+</div>
 <h2>Sicherung</h2>
 <div class="tools">
   <button class="tool" id="b-save"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1B3A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>Sicherung speichern</button>
@@ -98,7 +115,7 @@ input{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--f
 </div>
 <input type="file" id="b-file" accept=".json,application/json" hidden>
 <p class="note" id="b-msg">Sichere deine Daten regelmäßig, damit sie über Jahre nicht verloren gehen.</p>
-<p class="note">Alle Werte sind Schätzungen, denn Firmen können Dividenden ändern oder streichen. Beträge sind brutto, vor Steuern.</p>
+<p class="note">Alle Werte sind Schätzungen, denn Firmen können Dividenden ändern oder streichen. Netto ist eine Schätzung nach deinem Steuersatz, die echte Gutschrift kann leicht abweichen.</p>
 </main>
 
 <div class="ov" id="ov" hidden>
@@ -112,6 +129,8 @@ input{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--f
     <input id="f-buy" inputmode="decimal" placeholder="z. B. 55,20">
     <label for="f-div">Dividende pro Stück bei jeder Zahlung (€)</label>
     <input id="f-div" inputmode="decimal" placeholder="z. B. 0,45">
+    <label for="f-wht">Quellensteuer im Ausland (%)</label>
+    <input id="f-wht" inputmode="decimal" placeholder="0 bei Deutschland, meist 15 bei USA">
     <label>In welchen Monaten wird gezahlt?</label>
     <div class="chips" id="chips"></div>
     <div class="btns"><button id="cancel">Abbrechen</button><button class="ok" id="save">Speichern</button></div>
@@ -124,33 +143,37 @@ input{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--f
 const MON=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 const COL=['#FF5A5F','#FFB300','#16A34A','#2563EB','#7B3FE4','#00A8A8','#FF7A00','#D946EF'];
 const KEY='dividende-v1';
-let S=[],edit=null,sel=[];
+let S=[],edit=null,sel=[],T=26.375,NET=true;
 try{S=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){S=[]}
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+try{const z=JSON.parse(localStorage.getItem(KEY+'-set'));if(z){T=isFinite(+z.T)?+z.T:26.375;NET=z.NET!==false}}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(KEY+'-set',JSON.stringify({T,NET}))}catch(e){}};
 const $=id=>document.getElementById(id);
 const num=v=>parseFloat(String(v).replace(',','.'))||0;
 const eur=n=>n.toLocaleString('de-DE',{style:'currency',currency:'EUR'});
 const eurS=n=>n.toLocaleString('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:n>=100?0:2});
 const pct=n=>n.toLocaleString('de-DE',{maximumFractionDigits:2})+' %';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fac=h=>{if(!NET)return 1;const w=h.wht||0,ex=Math.max(0,w-15);return Math.max(0,1-(ex+Math.max(T,Math.min(w,15)))/100)};
 const COIN='<svg width="16" height="16" viewBox="0 0 24 24" fill="#FFB300" stroke="#0B1B3A" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8" stroke-linecap="round"/></svg>';
 
 function render(){
   const m=Array(12).fill(0),seg=Array.from({length:12},()=>[]);
   let year=0,cost=0;
   S.forEach((h,i)=>{
-    const p=h.qty*h.div;cost+=h.qty*h.buy;
+    const p=h.qty*h.div*fac(h);cost+=h.qty*h.buy;
     h.months.forEach(k=>{m[k]+=p;seg[k].push([p,COL[i%COL.length]]);year+=p});
   });
   const max=Math.max(...m,0.01),top=Math.max(...m);
   const bi=top>0?m.indexOf(top):-1;
   $('year').textContent=eur(year);
+  $('hl').textContent='Dein Depot zahlt dir dieses Jahr voraussichtlich ('+(NET?'netto':'brutto')+')';
+  document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',(b.dataset.n==='1')===NET));
   $('avg').textContent=eur(year/12);
   $('yld').textContent=cost>0?pct(year/cost*100):'–';
   $('best').textContent=bi>=0?MON[bi]:'–';
-  $('months').innerHTML=m.map((v,k)=>`<div class="mrow${v?'':' off'}"><span class="mn">${MON[k]}</span><div class="bar">${seg[k].map(s=>`<i style="width:${s[0]/max*100}%;background:${s[1]}"></i>`).join('')}</div><span class="mv">${v?eur(v):'–'}</span></div>`).join('');
+  $('months').innerHTML=m.map((v,k)=>`<div class="mrow${v?'':' off'}${k===new Date().getMonth()?' now':''}"><span class="mn">${MON[k]}</span><div class="bar">${seg[k].map(s=>`<i style="width:${s[0]/max*100}%;background:${s[1]}"></i>`).join('')}</div><span class="mv">${v?eur(v):'–'}</span></div>`).join('');
   $('list').innerHTML=S.length?S.map((h,i)=>{
-    const y=h.qty*h.div*h.months.length,c=h.qty*h.buy;
+    const y=h.qty*h.div*fac(h)*h.months.length,c=h.qty*h.buy;
     return `<button class="rowi" data-e="${i}"><span class="av" style="background:${COL[i%COL.length]}">${esc(h.name.charAt(0).toUpperCase())}</span><span class="tx"><b>${esc(h.name)}</b><small>${h.qty} Stück, Zahlung: ${h.months.map(k=>MON[k]).join(', ')||'–'}</small></span><span class="rt"><b>${eur(y)}</b><small>${c>0?pct(y/c*100)+' Rendite':'pro Jahr'}</small></span></button>`;
   }).join(''):'<p class="empty">Noch keine Aktie eingetragen. Tippe oben auf „Aktie hinzufügen“.</p>';
 }
@@ -159,9 +182,9 @@ function chips(){
   $('chips').innerHTML=MON.map((n,k)=>`<button class="chip${sel.includes(k)?' on':''}" data-m="${k}">${n}</button>`).join('');
 }
 function openForm(i){
-  edit=i;const h=i===null?{name:'',qty:'',buy:'',div:'',months:[]}:S[i];
+  edit=i;const h=i===null?{name:'',qty:'',buy:'',div:'',wht:'',months:[]}:S[i];
   $('ft').textContent=i===null?'Aktie hinzufügen':'Aktie bearbeiten';
-  $('f-name').value=h.name;$('f-qty').value=h.qty;$('f-buy').value=h.buy;$('f-div').value=h.div;
+  $('f-name').value=h.name;$('f-qty').value=h.qty;$('f-buy').value=h.buy;$('f-div').value=h.div;$('f-wht').value=h.wht||'';
   sel=[...h.months];chips();$('del').hidden=i===null;$('ov').hidden=false;
 }
 const close=()=>{$('ov').hidden=true};
@@ -175,7 +198,7 @@ $('chips').onclick=e=>{
 $('save').onclick=()=>{
   const name=$('f-name').value.trim();
   if(!name){$('f-name').focus();return}
-  const h={name,qty:num($('f-qty').value),buy:num($('f-buy').value),div:num($('f-div').value),months:[...sel]};
+  const h={name,qty:num($('f-qty').value),buy:num($('f-buy').value),div:num($('f-div').value),wht:num($('f-wht').value),months:[...sel]};
   if(edit===null)S.push(h);else S[edit]=h;
   save();close();render();
 };
@@ -186,6 +209,9 @@ $('list').onclick=e=>{
   const b=e.target.closest('[data-e]');if(b)openForm(+b.dataset.e);
 };
 
+$('seg').onclick=e=>{const n=e.target.dataset.n;if(n===undefined)return;NET=n==='1';save();render()};
+$('t-rate').value=String(T).replace('.',',');
+$('t-rate').onchange=()=>{T=Math.min(100,Math.max(0,num($('t-rate').value)));$('t-rate').value=String(T).replace('.',',');save();render()};
 const msg=t=>{$('b-msg').textContent=t};
 async function shareFile(file){
   try{
@@ -198,7 +224,7 @@ async function shareFile(file){
 const HINT=' Wähle „In Dateien sichern“. Gibt es die Datei schon, tippe auf „Ersetzen“, dann bleibt es bei einer Datei.';
 
 $('b-save').onclick=async()=>{
-  const d={app:'dividenden',version:1,gespeichert:new Date().toISOString(),aktien:S};
+  const d={app:'dividenden',version:1,gespeichert:new Date().toISOString(),steuer:T,aktien:S};
   const f=new File([JSON.stringify(d,null,1)],'dividenden-sicherung.json',{type:'application/json'});
   if(await shareFile(f))msg('Sicherung erstellt.'+HINT);
 };
@@ -211,14 +237,15 @@ $('b-file').onchange=async e=>{
     const a=Array.isArray(d)?d:d.aktien;
     if(!Array.isArray(a)||a.some(h=>typeof h.name!=='string'||!Array.isArray(h.months)))throw 0;
     if(!confirm('Sicherung mit '+a.length+' Aktien laden? Die aktuellen Daten werden ersetzt.'))return;
-    S=a.map(h=>({name:h.name,qty:+h.qty||0,buy:+h.buy||0,div:+h.div||0,months:h.months.filter(k=>k>=0&&k<12)}));
+    S=a.map(h=>({name:h.name,qty:+h.qty||0,buy:+h.buy||0,div:+h.div||0,months:h.months.filter(k=>k>=0&&k<12),wht:+h.wht||0}));
+    if(!Array.isArray(d)&&d.steuer!=null&&isFinite(+d.steuer)){T=+d.steuer;$('t-rate').value=String(T).replace('.',',')}
     save();render();msg('Sicherung geladen.');
   }catch(err){msg('Diese Datei ist keine gültige Sicherung.')}
 };
 
 $('b-xls').onclick=async()=>{
   if(typeof XLSX==='undefined'){msg('Der Excel-Export braucht kurz Internet. Verbinde dich und tippe nochmal.');return}
-  const head=['Aktie','Stückzahl','Kaufpreis pro Stück','Dividende pro Stück','Pro Jahr','Rendite %',...MON];
+  const head=['Aktie','Stückzahl','Kaufpreis pro Stück','Dividende pro Stück (brutto)','Pro Jahr (brutto)','Rendite % (brutto)',...MON];
   const rows=S.map(h=>{
     const p=h.qty*h.div,y=p*h.months.length,c=h.qty*h.buy;
     return [h.name,h.qty,h.buy,h.div,y,c>0?+(y/c*100).toFixed(2):'',...MON.map((_,k)=>h.months.includes(k)?p:0)];
