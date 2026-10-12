@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dividende">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#E3EEFF">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Dividenden</title>
+<style>
+:root{--bg:#E3EEFF;--ink:#0B1B3A;--mute:#52627f;--gold:#FFC93C;--field:#F1F5FD;--red:#D6303A;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;line-height:1.35}
+main{max-width:680px;margin:0 auto;padding:16px 16px 40px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+button:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+svg{display:block;flex:none}
+.head{display:flex;align-items:center;gap:10px;margin:6px 2px 14px}
+.head h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.5px}
+
+.hero{background:var(--gold);border-radius:32px;padding:22px 20px 18px}
+.hero p{margin:0;font-size:16px;font-weight:600}
+.big{font-size:clamp(40px,12vw,60px);font-weight:800;letter-spacing:-2px;line-height:1.05;margin:4px 0 16px}
+.stats{display:flex;flex-wrap:wrap;gap:8px}
+.pill{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.65);border-radius:999px;padding:8px 14px 8px 10px;font-size:15px}
+.pill b{font-weight:800}
+
+h2{font-size:20px;font-weight:800;margin:30px 2px 12px}
+.months{background:#fff;border-radius:24px;padding:8px 16px}
+.mrow{display:flex;align-items:center;gap:10px;margin:13px 0}
+.mn{width:36px;font-weight:800}
+.bar{flex:1;height:16px;border-radius:8px;background:var(--field);display:flex;overflow:hidden}
+.bar i{display:block;height:100%}
+.mv{width:98px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.mrow.off .mv{color:#8fa0c0;font-weight:500}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tool{display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;border-radius:18px;padding:15px 8px;font-weight:700;font-size:15px;text-align:center}
+.tool.wide{grid-column:1/-1}
+
+.add{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--ink);color:#fff;border-radius:999px;padding:16px;font-weight:700;font-size:17px;margin-bottom:6px}
+.rowi{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 4px;border-bottom:1.5px solid #c3d3ee}
+.rowi:last-child{border-bottom:0}
+.av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:19px;color:#fff;flex:none}
+.tx{flex:1;min-width:0}
+.tx b,.rt b{display:block;font-size:17px;font-weight:700}
+.tx small,.rt small{display:block;font-size:13px;color:var(--mute)}
+.tx small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rt{text-align:right}
+.empty{color:var(--mute);margin:14px 2px}
+.note{font-size:13px;color:var(--mute);margin:26px 2px 0}
+
+.ov{position:fixed;inset:0;background:rgba(11,27,58,.5);display:flex;align-items:flex-end;justify-content:center;z-index:5}
+.ov[hidden]{display:none}
+.sheet{background:#fff;width:100%;max-width:680px;max-height:92%;overflow:auto;border-radius:30px 30px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom,0px))}
+.sheet h3{margin:0 0 4px;font-size:22px;font-weight:800}
+label{display:block;font-size:14px;font-weight:600;color:var(--mute);margin:14px 2px 6px}
+input{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--field);border:0;border-radius:14px;padding:14px}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.chip{padding:11px 0;border-radius:999px;background:var(--field);font-weight:700;text-align:center}
+.chip.on{background:var(--ink);color:#fff}
+.btns{display:flex;gap:10px;margin-top:20px}
+.btns button{flex:1;padding:15px;border-radius:999px;font-weight:700;font-size:16px;background:var(--field)}
+.btns .ok{background:var(--ink);color:#fff;flex:2}
+.del{display:block;margin:16px auto 0;color:var(--red);font-weight:700}
+</style>
+</head>
+<body>
+<main>
+<div class="head">
+  <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 29V15" stroke="#0B1B3A" stroke-width="2.5" stroke-linecap="round"/><path d="M16 18c0-5.5-3.5-8.5-10-8.5 0 5.5 3.5 8.5 10 8.5z" fill="#16A34A"/><path d="M16 14c0-4.5 3.5-8 10-8 0 4.5-3.5 8-10 8z" fill="#FFB300"/></svg>
+  <h1>Dividenden</h1>
+</div>
+
+<section class="hero">
+  <p>Dein Depot zahlt dir dieses Jahr voraussichtlich</p>
+  <div class="big" id="year">0 €</div>
+  <div class="stats">
+    <div class="pill"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1B3A" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/></svg><span><b id="avg">0 €</b> pro Monat</span></div>
+    <div class="pill"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1B3A" stroke-width="2" stroke-linecap="round"><path d="M5 19L19 5"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/></svg><span><b id="yld">–</b> Rendite</span></div>
+    <div class="pill"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1B3A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><span>Bester Monat: <b id="best">–</b></span></div>
+  </div>
+</section>
+
+<h2>Pro Monat (erwartet)</h2>
+<div class="months" id="months"></div>
+
+<h2>Mein Depot</h2>
+<button class="add" id="add"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Aktie hinzufügen</button>
+<div id="list"></div>
+<h2>Sicherung</h2>
+<div class="tools">
+  <button class="tool" id="b-save"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1B3A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>Sicherung speichern</button>
+  <button class="tool" id="b-load"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1B3A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M8 11l4 4 4-4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>Sicherung laden</button>
+  <button class="tool wide" id="b-xls"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 10h16M4 15h16M10 4v16"/></svg>Excel-Sicherung speichern</button>
+</div>
+<input type="file" id="b-file" accept=".json,application/json" hidden>
+<p class="note" id="b-msg">Sichere deine Daten regelmäßig, damit sie über Jahre nicht verloren gehen.</p>
+<p class="note">Alle Werte sind Schätzungen, denn Firmen können Dividenden ändern oder streichen. Beträge sind brutto, vor Steuern.</p>
+</main>
+
+<div class="ov" id="ov" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ft">
+    <h3 id="ft">Aktie hinzufügen</h3>
+    <label for="f-name">Name oder Kürzel</label>
+    <input id="f-name" placeholder="z. B. Coca-Cola">
+    <label for="f-qty">Stückzahl</label>
+    <input id="f-qty" inputmode="decimal" placeholder="z. B. 10">
+    <label for="f-buy">Kaufpreis pro Stück (€)</label>
+    <input id="f-buy" inputmode="decimal" placeholder="z. B. 55,20">
+    <label for="f-div">Dividende pro Stück bei jeder Zahlung (€)</label>
+    <input id="f-div" inputmode="decimal" placeholder="z. B. 0,45">
+    <label>In welchen Monaten wird gezahlt?</label>
+    <div class="chips" id="chips"></div>
+    <div class="btns"><button id="cancel">Abbrechen</button><button class="ok" id="save">Speichern</button></div>
+    <button class="del" id="del" hidden>Aktie löschen</button>
+  </div>
+</div>
+
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const MON=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+const COL=['#FF5A5F','#FFB300','#16A34A','#2563EB','#7B3FE4','#00A8A8','#FF7A00','#D946EF'];
+const KEY='dividende-v1';
+let S=[],edit=null,sel=[];
+try{S=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){S=[]}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const $=id=>document.getElementById(id);
+const num=v=>parseFloat(String(v).replace(',','.'))||0;
+const eur=n=>n.toLocaleString('de-DE',{style:'currency',currency:'EUR'});
+const eurS=n=>n.toLocaleString('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:n>=100?0:2});
+const pct=n=>n.toLocaleString('de-DE',{maximumFractionDigits:2})+' %';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const COIN='<svg width="16" height="16" viewBox="0 0 24 24" fill="#FFB300" stroke="#0B1B3A" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8" stroke-linecap="round"/></svg>';
+
+function render(){
+  const m=Array(12).fill(0),seg=Array.from({length:12},()=>[]);
+  let year=0,cost=0;
+  S.forEach((h,i)=>{
+    const p=h.qty*h.div;cost+=h.qty*h.buy;
+    h.months.forEach(k=>{m[k]+=p;seg[k].push([p,COL[i%COL.length]]);year+=p});
+  });
+  const max=Math.max(...m,0.01),top=Math.max(...m);
+  const bi=top>0?m.indexOf(top):-1;
+  $('year').textContent=eur(year);
+  $('avg').textContent=eur(year/12);
+  $('yld').textContent=cost>0?pct(year/cost*100):'–';
+  $('best').textContent=bi>=0?MON[bi]:'–';
+  $('months').innerHTML=m.map((v,k)=>`<div class="mrow${v?'':' off'}"><span class="mn">${MON[k]}</span><div class="bar">${seg[k].map(s=>`<i style="width:${s[0]/max*100}%;background:${s[1]}"></i>`).join('')}</div><span class="mv">${v?eur(v):'–'}</span></div>`).join('');
+  $('list').innerHTML=S.length?S.map((h,i)=>{
+    const y=h.qty*h.div*h.months.length,c=h.qty*h.buy;
+    return `<button class="rowi" data-e="${i}"><span class="av" style="background:${COL[i%COL.length]}">${esc(h.name.charAt(0).toUpperCase())}</span><span class="tx"><b>${esc(h.name)}</b><small>${h.qty} Stück, Zahlung: ${h.months.map(k=>MON[k]).join(', ')||'–'}</small></span><span class="rt"><b>${eur(y)}</b><small>${c>0?pct(y/c*100)+' Rendite':'pro Jahr'}</small></span></button>`;
+  }).join(''):'<p class="empty">Noch keine Aktie eingetragen. Tippe oben auf „Aktie hinzufügen“.</p>';
+}
+
+function chips(){
+  $('chips').innerHTML=MON.map((n,k)=>`<button class="chip${sel.includes(k)?' on':''}" data-m="${k}">${n}</button>`).join('');
+}
+function openForm(i){
+  edit=i;const h=i===null?{name:'',qty:'',buy:'',div:'',months:[]}:S[i];
+  $('ft').textContent=i===null?'Aktie hinzufügen':'Aktie bearbeiten';
+  $('f-name').value=h.name;$('f-qty').value=h.qty;$('f-buy').value=h.buy;$('f-div').value=h.div;
+  sel=[...h.months];chips();$('del').hidden=i===null;$('ov').hidden=false;
+}
+const close=()=>{$('ov').hidden=true};
+$('add').onclick=()=>openForm(null);
+$('cancel').onclick=close;
+$('ov').onclick=e=>{if(e.target===$('ov'))close()};
+$('chips').onclick=e=>{
+  const k=e.target.dataset.m;if(k===undefined)return;
+  const n=+k;sel=sel.includes(n)?sel.filter(x=>x!==n):[...sel,n].sort((a,b)=>a-b);chips();
+};
+$('save').onclick=()=>{
+  const name=$('f-name').value.trim();
+  if(!name){$('f-name').focus();return}
+  const h={name,qty:num($('f-qty').value),buy:num($('f-buy').value),div:num($('f-div').value),months:[...sel]};
+  if(edit===null)S.push(h);else S[edit]=h;
+  save();close();render();
+};
+$('del').onclick=()=>{
+  if(edit!==null&&confirm('Diese Aktie löschen?')){S.splice(edit,1);save();close();render()}
+};
+$('list').onclick=e=>{
+  const b=e.target.closest('[data-e]');if(b)openForm(+b.dataset.e);
+};
+
+const msg=t=>{$('b-msg').textContent=t};
+async function shareFile(file){
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file]});return true}
+  }catch(e){if(e&&e.name==='AbortError')return false}
+  const url=URL.createObjectURL(file),a=document.createElement('a');
+  a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);return true;
+}
+const HINT=' Wähle „In Dateien sichern“. Gibt es die Datei schon, tippe auf „Ersetzen“, dann bleibt es bei einer Datei.';
+
+$('b-save').onclick=async()=>{
+  const d={app:'dividenden',version:1,gespeichert:new Date().toISOString(),aktien:S};
+  const f=new File([JSON.stringify(d,null,1)],'dividenden-sicherung.json',{type:'application/json'});
+  if(await shareFile(f))msg('Sicherung erstellt.'+HINT);
+};
+
+$('b-load').onclick=()=>$('b-file').click();
+$('b-file').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const d=JSON.parse(await f.text());
+    const a=Array.isArray(d)?d:d.aktien;
+    if(!Array.isArray(a)||a.some(h=>typeof h.name!=='string'||!Array.isArray(h.months)))throw 0;
+    if(!confirm('Sicherung mit '+a.length+' Aktien laden? Die aktuellen Daten werden ersetzt.'))return;
+    S=a.map(h=>({name:h.name,qty:+h.qty||0,buy:+h.buy||0,div:+h.div||0,months:h.months.filter(k=>k>=0&&k<12)}));
+    save();render();msg('Sicherung geladen.');
+  }catch(err){msg('Diese Datei ist keine gültige Sicherung.')}
+};
+
+$('b-xls').onclick=async()=>{
+  if(typeof XLSX==='undefined'){msg('Der Excel-Export braucht kurz Internet. Verbinde dich und tippe nochmal.');return}
+  const head=['Aktie','Stückzahl','Kaufpreis pro Stück','Dividende pro Stück','Pro Jahr','Rendite %',...MON];
+  const rows=S.map(h=>{
+    const p=h.qty*h.div,y=p*h.months.length,c=h.qty*h.buy;
+    return [h.name,h.qty,h.buy,h.div,y,c>0?+(y/c*100).toFixed(2):'',...MON.map((_,k)=>h.months.includes(k)?p:0)];
+  });
+  const tot=['Summe','','','',rows.reduce((s,r)=>s+r[4],0),'',...MON.map((_,k)=>rows.reduce((s,r)=>s+r[6+k],0))];
+  const ws=XLSX.utils.aoa_to_sheet([head,...rows,tot]);
+  ws['!cols']=[{wch:22},...Array(17).fill({wch:13})];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Dividenden');
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  const f=new File([buf],'dividenden.xlsx',{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  if(await shareFile(f))msg('Excel-Datei erstellt.'+HINT);
+};
+render();
+</script>
+</body>
+</html>
