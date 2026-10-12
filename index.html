@@ -43,6 +43,10 @@ h2{font-size:20px;font-weight:800;margin:30px 2px 12px}
 .seg button{padding:7px 16px;border-radius:999px;font-weight:700;font-size:14px}
 .seg button.on{background:var(--ink);color:#fff}
 .mrow.now .mn{background:var(--gold);border-radius:999px;text-align:center}
+.mrow[data-m]{cursor:pointer}
+.ist{display:block;font-size:12px;font-weight:700;color:#16A34A}
+.prow{display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1.5px solid #e3ebf8}
+.prow.sum{border-bottom:0}
 .set{background:#fff;border-radius:24px;padding:2px 16px 16px}
 .hint{font-size:13px;color:var(--mute);margin:8px 2px 0}
 .warn{background:#fff;border:3px solid var(--gold);border-radius:20px;padding:14px 16px;margin:0 0 14px;font-weight:700}
@@ -97,6 +101,7 @@ input{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--f
 
 <h2>Pro Monat (erwartet)</h2>
 <div class="months" id="months"></div>
+<p class="hint" id="cmp"></p>
 
 <h2>Mein Depot</h2>
 <button class="add" id="add"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Aktie hinzufügen</button>
@@ -105,7 +110,11 @@ input{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--f
 <div class="set">
   <label for="t-rate">Steuersatz auf Dividenden in Deutschland (%)</label>
   <input id="t-rate" inputmode="decimal">
-  <p class="hint">26,375 % gilt ohne Kirchensteuer (Abgeltungsteuer plus Soli). Mit Kirchensteuer ist er etwas höher. Deckt dein Freistellungsauftrag die Dividenden ab, trage 0 ein.</p>
+  <label for="t-fb">Freibetrag pro Jahr (€)</label>
+  <input id="t-fb" inputmode="decimal" placeholder="z. B. 1000 (Freistellungsauftrag)">
+  <label for="t-fbu">Davon durch andere Erträge schon verbraucht (€)</label>
+  <input id="t-fbu" inputmode="decimal" placeholder="meist 0">
+  <p class="hint">26,375 % gilt ohne Kirchensteuer (Abgeltungsteuer plus Soli). Mit Kirchensteuer ist er etwas höher. Der Freibetrag bleibt steuerfrei, bis er von Januar bis Dezember aufgebraucht ist, danach gilt der Steuersatz. Setze den verbrauchten Betrag zu Jahresbeginn wieder auf 0.</p>
 </div>
 <h2>Sicherung</h2>
 <div class="tools">
@@ -138,31 +147,53 @@ input{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--f
   </div>
 </div>
 
+<div class="ov" id="ov2" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mt">
+    <h3 id="mt">Monat</h3>
+    <div id="mlist"></div>
+    <label for="m-act">Tatsächlich gutgeschrieben (€)</label>
+    <input id="m-act" inputmode="decimal" placeholder="Betrag aus deiner Broker-App">
+    <p class="hint" id="m-diff"></p>
+    <div class="btns"><button id="m-close">Schließen</button><button class="ok" id="m-save">Speichern</button></div>
+  </div>
+</div>
+
 <script async src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const MON=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 const COL=['#FF5A5F','#FFB300','#16A34A','#2563EB','#7B3FE4','#00A8A8','#FF7A00','#D946EF'];
 const KEY='dividende-v1';
-let S=[],edit=null,sel=[],T=26.375,NET=true;
+let S=[],edit=null,sel=[],T=26.375,NET=true,FB=0,FBU=0,ACT={};
+const YEAR=new Date().getFullYear();
 try{S=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){S=[]}
-try{const z=JSON.parse(localStorage.getItem(KEY+'-set'));if(z){T=isFinite(+z.T)?+z.T:26.375;NET=z.NET!==false}}catch(e){}
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(KEY+'-set',JSON.stringify({T,NET}))}catch(e){}};
+try{const z=JSON.parse(localStorage.getItem(KEY+'-set'));if(z){T=isFinite(+z.T)?+z.T:26.375;NET=z.NET!==false;FB=+z.FB||0;FBU=+z.FBU||0}}catch(e){}
+try{ACT=JSON.parse(localStorage.getItem(KEY+'-ist'))||{}}catch(e){ACT={}}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(KEY+'-set',JSON.stringify({T,NET,FB,FBU}));localStorage.setItem(KEY+'-ist',JSON.stringify(ACT))}catch(e){}};
 const $=id=>document.getElementById(id);
 const num=v=>parseFloat(String(v).replace(',','.'))||0;
 const eur=n=>n.toLocaleString('de-DE',{style:'currency',currency:'EUR'});
 const eurS=n=>n.toLocaleString('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:n>=100?0:2});
 const pct=n=>n.toLocaleString('de-DE',{maximumFractionDigits:2})+' %';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fac=h=>{if(!NET)return 1;const w=h.wht||0,ex=Math.max(0,w-15);return Math.max(0,1-(ex+Math.max(T,Math.min(w,15)))/100)};
+const calc=()=>{
+  const m=Array(12).fill(0),nm=Array(12).fill(0),seg=Array.from({length:12},()=>[]),yh=S.map(()=>0),pay=Array.from({length:12},()=>[]);
+  let year=0,cost=0,rem=Math.max(0,FB-FBU);
+  S.forEach(h=>{cost+=h.qty*h.buy});
+  for(let k=0;k<12;k++)S.forEach((h,i)=>{
+    if(!h.months.includes(k))return;
+    const g=h.qty*h.div,w=h.wht||0,wa=g*w/100;
+    const use=Math.min(rem,g);rem-=use;
+    const before=(g-use)*T/100,cr=Math.min(g*Math.min(w,15)/100,before);
+    const n=Math.max(0,g-(wa+before-cr)),d=NET?n:g;
+    m[k]+=d;nm[k]+=n;yh[i]+=d;year+=d;seg[k].push([d,COL[i%COL.length]]);
+    pay[k].push({i,name:h.name,g,n});
+  });
+  return{m,nm,seg,yh,pay,year,cost};
+};
 const COIN='<svg width="16" height="16" viewBox="0 0 24 24" fill="#FFB300" stroke="#0B1B3A" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8" stroke-linecap="round"/></svg>';
 
 function render(){
-  const m=Array(12).fill(0),seg=Array.from({length:12},()=>[]);
-  let year=0,cost=0;
-  S.forEach((h,i)=>{
-    const p=h.qty*h.div*fac(h);cost+=h.qty*h.buy;
-    h.months.forEach(k=>{m[k]+=p;seg[k].push([p,COL[i%COL.length]]);year+=p});
-  });
+  const C=calc(),m=C.m,seg=C.seg,year=C.year,cost=C.cost;
   const max=Math.max(...m,0.01),top=Math.max(...m);
   const bi=top>0?m.indexOf(top):-1;
   $('year').textContent=eur(year);
@@ -171,9 +202,14 @@ function render(){
   $('avg').textContent=eur(year/12);
   $('yld').textContent=cost>0?pct(year/cost*100):'–';
   $('best').textContent=bi>=0?MON[bi]:'–';
-  $('months').innerHTML=m.map((v,k)=>`<div class="mrow${v?'':' off'}${k===new Date().getMonth()?' now':''}"><span class="mn">${MON[k]}</span><div class="bar">${seg[k].map(s=>`<i style="width:${s[0]/max*100}%;background:${s[1]}"></i>`).join('')}</div><span class="mv">${v?eur(v):'–'}</span></div>`).join('');
+  let sumA=0,sumE=0,cnt=0;
+  $('months').innerHTML=m.map((v,k)=>{
+    const a=ACT[YEAR+'-'+k],has=a!=null;
+    if(has){sumA+=a;sumE+=C.nm[k];cnt++}
+    return `<div class="mrow${v?'':' off'}${k===new Date().getMonth()?' now':''}" data-m="${k}" role="button" tabindex="0"><span class="mn">${MON[k]}</span><div class="bar">${seg[k].map(s=>`<i style="width:${s[0]/max*100}%;background:${s[1]}"></i>`).join('')}</div><span class="mv">${v?eur(v):'–'}${has?`<small class="ist">Ist ${eur(a)}</small>`:''}</span></div>`}).join('');
+  $('cmp').textContent=cnt?`Eingetragene Monate: tatsächlich ${eur(sumA)}, erwartet (netto) ${eur(sumE)}, Differenz ${sumA-sumE>=0?'+':''}${eur(sumA-sumE)}.`:'Tippe auf einen Monat für Details und um die tatsächliche Gutschrift einzutragen.';
   $('list').innerHTML=S.length?S.map((h,i)=>{
-    const y=h.qty*h.div*fac(h)*h.months.length,c=h.qty*h.buy;
+    const y=C.yh[i],c=h.qty*h.buy;
     return `<button class="rowi" data-e="${i}"><span class="av" style="background:${COL[i%COL.length]}">${esc(h.name.charAt(0).toUpperCase())}</span><span class="tx"><b>${esc(h.name)}</b><small>${h.qty} Stück, Zahlung: ${h.months.map(k=>MON[k]).join(', ')||'–'}</small></span><span class="rt"><b>${eur(y)}</b><small>${c>0?pct(y/c*100)+' Rendite':'pro Jahr'}</small></span></button>`;
   }).join(''):'<p class="empty">Noch keine Aktie eingetragen. Tippe oben auf „Aktie hinzufügen“.</p>';
 }
@@ -212,6 +248,30 @@ $('list').onclick=e=>{
 $('seg').onclick=e=>{const n=e.target.dataset.n;if(n===undefined)return;NET=n==='1';save();render()};
 $('t-rate').value=String(T).replace('.',',');
 $('t-rate').onchange=()=>{T=Math.min(100,Math.max(0,num($('t-rate').value)));$('t-rate').value=String(T).replace('.',',');save();render()};
+const fmt=n=>String(n).replace('.',',');
+$('t-fb').value=FB?fmt(FB):'';$('t-fbu').value=FBU?fmt(FBU):'';
+$('t-fb').onchange=()=>{FB=Math.max(0,num($('t-fb').value));$('t-fb').value=FB?fmt(FB):'';save();render()};
+$('t-fbu').onchange=()=>{FBU=Math.max(0,num($('t-fbu').value));$('t-fbu').value=FBU?fmt(FBU):'';save();render()};
+let mk=null;
+function diff(C){
+  const a=ACT[YEAR+'-'+mk],e=C.nm[mk];
+  $('m-diff').textContent=a==null?'Erwartet (netto): '+eur(e)+'. Trage ein, was wirklich gutgeschrieben wurde.':'Erwartet (netto) '+eur(e)+', tatsächlich '+eur(a)+', Differenz '+(a-e>=0?'+':'')+eur(a-e)+'.';
+}
+function openM(k){
+  mk=k;const C=calc(),L=C.pay[k];let G=0,N=0;
+  $('mt').textContent=MON[k]+' '+YEAR;
+  $('mlist').innerHTML=L.length?L.map(p=>{G+=p.g;N+=p.n;return `<div class="prow"><span class="dot" style="background:${COL[p.i%COL.length]}"></span><span class="tx"><b>${esc(p.name)}</b><small>brutto ${eur(p.g)}, Steuern ${eur(p.g-p.n)}</small></span><b>${eur(NET?p.n:p.g)}</b></div>`}).join('')+`<div class="prow sum"><span class="tx"><b>Summe</b><small>brutto ${eur(G)}</small></span><b>${eur(NET?N:G)}</b></div>`:'<p class="empty">In diesem Monat zahlt keine Aktie.</p>';
+  const a=ACT[YEAR+'-'+k];$('m-act').value=a==null?'':fmt(a);diff(C);$('ov2').hidden=false;
+}
+$('months').onclick=e=>{const r=e.target.closest('[data-m]');if(r)openM(+r.dataset.m)};
+$('months').onkeydown=e=>{if(e.key==='Enter'){const r=e.target.closest('[data-m]');if(r)openM(+r.dataset.m)}};
+$('m-close').onclick=()=>{$('ov2').hidden=true};
+$('ov2').onclick=e=>{if(e.target===$('ov2'))$('ov2').hidden=true};
+$('m-save').onclick=()=>{
+  const v=$('m-act').value.trim();
+  if(v==='')delete ACT[YEAR+'-'+mk];else ACT[YEAR+'-'+mk]=num(v);
+  save();$('ov2').hidden=true;render();
+};
 const msg=t=>{$('b-msg').textContent=t};
 async function shareFile(file){
   try{
@@ -224,7 +284,7 @@ async function shareFile(file){
 const HINT=' Wähle „In Dateien sichern“. Gibt es die Datei schon, tippe auf „Ersetzen“, dann bleibt es bei einer Datei.';
 
 $('b-save').onclick=async()=>{
-  const d={app:'dividenden',version:1,gespeichert:new Date().toISOString(),steuer:T,aktien:S};
+  const d={app:'dividenden',version:1,gespeichert:new Date().toISOString(),steuer:T,freibetrag:FB,verbraucht:FBU,ist:ACT,aktien:S};
   const f=new File([JSON.stringify(d,null,1)],'dividenden-sicherung.json',{type:'application/json'});
   if(await shareFile(f))msg('Sicherung erstellt.'+HINT);
 };
@@ -239,6 +299,7 @@ $('b-file').onchange=async e=>{
     if(!confirm('Sicherung mit '+a.length+' Aktien laden? Die aktuellen Daten werden ersetzt.'))return;
     S=a.map(h=>({name:h.name,qty:+h.qty||0,buy:+h.buy||0,div:+h.div||0,months:h.months.filter(k=>k>=0&&k<12),wht:+h.wht||0}));
     if(!Array.isArray(d)&&d.steuer!=null&&isFinite(+d.steuer)){T=+d.steuer;$('t-rate').value=String(T).replace('.',',')}
+    if(!Array.isArray(d)){if(d.freibetrag!=null){FB=+d.freibetrag||0;FBU=+d.verbraucht||0;$('t-fb').value=FB?fmt(FB):'';$('t-fbu').value=FBU?fmt(FBU):''}if(d.ist&&typeof d.ist==='object')ACT=d.ist}
     save();render();msg('Sicherung geladen.');
   }catch(err){msg('Diese Datei ist keine gültige Sicherung.')}
 };
